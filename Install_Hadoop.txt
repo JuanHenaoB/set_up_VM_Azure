@@ -1,0 +1,133 @@
+############################################
+############### Notes Section ##############
+############################################
+
+#Note, the text that is preceded by a "#" character is a comment or explanation on my part and not a command or code to be executed ! 
+
+################################################
+##### Execute this commands in Powershell ######
+################################################
+
+#Connect to VM
+#Make sure to replace the ip with your ip
+
+ssh azureuser@52.190.20.42
+
+#Update system as good practice and install java
+
+sudo apt update
+sudo apt install openjdk-8-jdk
+
+#See java version and directory location
+
+java -version
+whereis java
+
+#open profile file
+nano .profile
+#Append the following code at the end
+export JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64"
+export HADOOP_HOME="/usr/local/hadoop"
+#save and exit
+
+#Load profile
+source .profile
+
+#Verify variables
+echo $JAVA_HOME
+echo $HADOOP_HOME
+
+##############################################
+############### Install Hadoop ###############
+##############################################
+
+#Download tar file
+#wget http://apache.cs.utah.edu/hadoop/common/hadoop-3.3.3/hadoop-3.3.3.tar.gz
+wget https://archive.apache.org/dist/hadoop/common/hadoop-3.3.3/hadoop-3.3.3.tar.gz
+#if above site is down then pick any mirror site for the same version
+
+#Unzip file
+tar -xzvf hadoop-3.3.3.tar.gz
+
+#move file to desired location
+sudo mv hadoop-3.3.3 "$HADOOP_HOME"
+echo "export PATH=\"\$PATH:\$HADOOP_HOME/bin\"" >> $HOME/.profile
+
+#open file and verify  hadoop_home dir in file
+nano .profile
+
+#load profile
+source .profile
+
+#Test hadoop
+hadoop
+#***hadoop is running if you can see hadoop commands and SUBCOMMANDS
+
+###############################
+####### configure hadoop ######
+###############################
+
+#open xml core config file
+sudo nano "$HADOOP_HOME/etc/hadoop/core-site.xml"
+#Append following code between the configuration bucket
+<property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://localhost:9000</value>
+  </property>
+# save and exit file
+
+#open xml hadoop config file
+sudo nano "$HADOOP_HOME/etc/hadoop/hdfs-site.xml"
+#Append the following code between the configuration bucket
+<property>
+    <name>dfs.replication</name>
+    <value>1</value>
+  </property>
+#save and exit
+
+#setup key for localhost
+ssh-keygen
+
+#Copy ssh key to desired location
+cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
+
+#setup permissions for ssh
+chmod 600 $HOME/.ssh/authorized_keys
+ssh localhost
+exit
+
+#next steps I'm not sure about what they do xd
+sudo chown -R "$(whoami):" "$HADOOP_HOME"
+hdfs namenode -format #I think this sets up the node for hadoop
+
+#do a couple more of changes in profile file
+echo "export PATH=\"\$PATH:\$HADOOP_HOME/sbin\"" >> $HOME/.profile
+source $HOME/.profile
+
+#check profile you should have 4 export paths
+nano .profile
+
+#export another directory
+echo "export JAVA_HOME=\"/usr/lib/jvm/java-8-openjdk-amd64\"" >> "$HADOOP_HOME/etc/hadoop/hadoop-env.sh"
+nano "$HADOOP_HOME/etc/hadoop/hadoop-env.sh"
+#(go to end and verify ...JAVA_HOME... and ctrl+x)
+
+#Now start all daemons for hadoop
+start-dfs.sh
+start-yarn.sh
+jps
+
+
+#Following services should be running
+#NodeManager
+#NameNode
+#Jps
+#SecondaryNameNode
+#ResourceManager
+#DataNode
+
+#Useful;
+#Resource Manager  -->http://localhost:8088 
+#Hadoop GUI -->http://localhost:9870
+#Hadoop FileSystem -->http://localhost:9870/explorer.html#/
+#Zeppelin -> http://localhost:8080/

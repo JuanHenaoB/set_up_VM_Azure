@@ -1,0 +1,117 @@
+############################################
+############### Notes Section ##############
+############################################
+
+#Note, the text that is precede by a "#" character is a comment or explanation on my part and not a command or code to be executed ! 
+
+#Delete resurce group
+#Use this command in the azure CLI in case you need to delete everything related to a specific project for any reason.
+#Notice the juanhenaotraining is just a specific resource group name. It should be replaced with yours
+
+az group delete --name juanhenaotraining
+
+############################################
+################# Start ####################
+############################################
+
+#Before starting to follow the steps in this script make sure you first do the following:
+  #- Create or have a Microsoft Azure Account.
+  #- Install the Azure CLI in your working console.
+
+######################################################
+### The following steps are executed on powershell ###
+######################################################
+
+#login into your microsoft azure account
+#This command will open a web page where you will be asked to sign in to azure, you can also use asure id to log in without being redirected to the web
+
+az login 
+
+#Create a resource group allowing to drop/release all resources to save costs or re start a project etc... is a good practice to create resource groups
+#it will help keep the azure account organized you can also customize the Names
+# --location eastus is slightly cheaper than other locations you can go to the azure web to check for prices
+
+az group create --name juanhenaotraining --location eastus --tags Name=Juan Environment=Training
+
+#Create a ssh key
+
+ssh-keygen -m PEM -t rsa -b 2048
+
+#Create a virtual machine (using the previously created ssh key)
+#You can customize the name, image for the OS of the machine that you want admin user name and size, remember that better machines are more expensive
+
+az vm create --resource-group juanhenaotraining --name jhVM --image Ubuntu2204 --admin-username azureuser --size Standard_F4s --ssh-key-value ~/.ssh/id_rsa.pub
+
+#Take a note on the output of this command of the IP Address of this VM
+# Output should be something like this:
+#"location": "eastus",
+#  "macAddress": "60-45-BD-D3-A6-7B",
+#  "powerState": "VM running",
+#  "privateIpAddress": "10.0.0.4",
+#  "publicIpAddress": "52.190.20.42",
+#  "resourceGroup": "juanhenaotraining",
+#  "zones": ""
+
+#Install Web Server on the Virtual Machine
+
+az vm run-command invoke -g juanhenaotraining -n jhVM  --command-id RunShellScript  --scripts "sudo apt-get update && sudo apt-get install -y nginx"
+
+#Open port 80 for web traffic
+
+az vm open-port --port 80 --resource-group juanhenaotraining --name jhVM
+
+######################################################
+###### end of steps are executed on powershell #######
+######################################################
+
+#Test if the VM is running go to Virtual Machine ip adress :80 (port 80) on a web browser and check if there
+#is a message displaying nginx.
+
+######################################################
+############ Now go back to  powershell ##############
+######################################################
+
+#Connect to VM through ssh make sure to replace with your ip address
+
+ssh azureuser@52.190.20.42
+
+#Now you should see that you're inside a linux env, this is your virtual machine.
+#install remote desktop environment
+
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get -y install xfce4
+sudo apt install xfce4-session
+
+#Install and configure a remote desktop server
+
+sudo apt-get -y install xrdp
+sudo systemctl enable xrdp
+
+#on Ubuntu 20, you will need to give certificate access to an xrdp user
+
+sudo adduser xrdp ssl-cert
+echo xfce4-session >~/.xsession
+sudo service xrdp restart
+
+#Set a local password
+
+sudo passwd azureuser 
+#(Provide a password, no special characters , only upper and lower cases, make sure to write it down )
+
+#Install Google Chrome on the VM
+
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb
+
+#exit from VM
+
+exit
+
+#Create a Network Security Group rule for Remote Desktop traffic
+az vm open-port --resource-group juanhenaotraining --name jhVM --port 3389  --priority 1100
+
+#Now you can connect remotly to VM desktop
+#Use Microsoft Remote Desktop Connection
+#login with VM ip
+#login with azureuser credentials
+#Now your virtual machine is ready
